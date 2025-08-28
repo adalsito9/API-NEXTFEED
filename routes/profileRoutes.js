@@ -53,6 +53,25 @@ router.get('/id/:userId', protect, async (req, res) => {
   }
 });
 
+router.put('/avatar', protect, async (req, res) => {
+    try {
+        const { avatarUrl } = req.body;
+        if (!avatarUrl) return res.status(400).json({ success: false, message: 'Falta avatarUrl' });
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { avatarUrl },
+            { new: true }
+        );
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+
+        res.json({ success: true, message: 'Avatar actualizado', avatarUrl: user.avatarUrl });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error al actualizar avatar' });
+    }
+});
+
+
 // @desc    Seguir/Dejar de seguir a un usuario
 // @route   POST /api/profile/follow/:userId
 // @access  Private (Necesita JWT)

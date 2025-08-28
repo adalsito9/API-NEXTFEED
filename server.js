@@ -17,10 +17,22 @@ const postRoutes = require('./routes/postRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 
+const messageRoutes = require('./routes/messageRoutes');
+const Message = require('./models/Message');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
+
+
+
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
 
 
 
@@ -99,6 +111,8 @@ app.get('/api/data-by-apikey', apiAuth, (req, res) => {
 
 // Rutas de autenticación
 
+app.use('/api/messages', messageRoutes);
+
 // Rutas de publicaciones (protegidas donde sea necesario)
 app.use('/api/posts', postRoutes);
 
@@ -109,6 +123,40 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/profile', protect, profileRoutes); // Toda la ruta de perfil está protegida por JWT
 
 
+
+//WEB SOCKETS
+
+io.use((socket, next) => {
+  // Aquí puedes validar el token si quieres
+  next();
+});
+
+io.on('connection', (socket) => {
+  socket.on('join', (userId) => {
+    socket.join(userId);
+    socket.userId = userId;
+  });
+
+
+  socket.on('typing', (data) => {
+    // data: { to }
+    io.to(data.to).emit('typing', { from: socket.userId });
+});
+
+  socket.on('private_message', async (msg) => {
+    // Guarda el mensaje en la base de datos
+    const newMsg = new Message({
+      from: socket.userId,
+      to: msg.to,
+      text: msg.text
+    });
+    await newMsg.save();
+
+    // Envía el mensaje en tiempo real
+    io.to(msg.to).emit('private_message', { ...msg, from: socket.userId });
+    io.to(socket.userId).emit('private_message', { ...msg, from: socket.userId });
+  });
+});
 
 
 
@@ -134,7 +182,7 @@ app.use((err, req, res, next) => {
 
 // });
 
-app.listen(process.env.PORT || 3000, '0.0.0.0', () => {
+server.listen(process.env.PORT || 3000, '0.0.0.0', () => {
   console.log('API corriendo...');
 });
 

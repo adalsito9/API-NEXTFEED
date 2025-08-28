@@ -158,7 +158,7 @@ exports.agregarPost = async (req, res) => {
     const newPost = new Post(req.body);
     const info = await newPost.save();
     return res.status(200).json({
-      mensaje: 'La información se guardó correctamente',
+      mensaje: 'Tu publicación se ha creado correctamente',
       info
     });
   } catch (e) {
